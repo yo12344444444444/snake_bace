@@ -2,215 +2,150 @@ IDEAL
 MODEL small
 STACK 100h
 DATASEG
-; --------------------------
-; Your variables here
-; --------------------------
+    Clock equ es:6Ch
+    pos dw 0
+    sodoRand db 0 
+    x1 dw 42
+    y1 dw 12
+	x2 dw 44
+    y2 dw 12
+	x3 dw 40
+    y3 dw 12
+
 CODESEG
-
 proc blackScreen
+    xor ax, ax
+    mov di, 0
+    mov al, ' '
+    mov ah, 0
 
-	xor ax, ax 
-	mov di, 0
-	mov al, ' '
-	mov ah, 0
-	
-	black:
-		mov [es:di], ax
-		add di, 2
-		cmp di, 2*(25*80)
-		jnz black
-		
-	mov di, 0
-	mov ax, 0
+black:
+    mov [es:di], ax
+    add di, 2
+    cmp di, 2 * (25 * 80)
+    jnz black
 
-	ret
+    mov di, 0
+    mov ax, 0
+
+    ret
 endp blackScreen
 
-proc moveUp
+proc drow2
+	mov bx , y1
+	mov y2 ,bx
+	mov bx,x1
+	mov x2,bx
 
-	mov al, ' '
-	mov ah, 0
-	mov [es:di], ax
-	sub di, 160
-	
-	mov al, '*'
-	mov ah, 255
-	mov [es:di], ax
+    xor bx, bx
+    mov ax,80
+    mov di,y1
+    mul di
+    mov di,ax
+    add di,x1
+    mov ax,2
+    mul di
+    mov di,ax
+    mov bl, '*'
+    mov bh, 125
+    mov [es:di], bx
+    ret
+endp drow2
 
-	ret
-endp moveUp
-
-proc moveDown
-
-	mov al, ' '
-	mov ah, 0
-	mov [es:di], ax
-	add di, 160
-	
-	mov al, '*'
-	mov ah, 255
-	mov [es:di], ax
-
-	ret
+proc drow3
+	mov bx , y2
+	mov y3 ,bx
+	mov bx,x2
+	mov x3,bx
+    xor bx, bx
+    mov ax,80
+    mov di,y3
+    mul di
+    mov di,ax
+    add di,x3
+    mov ax,2
+    mul di
+    mov di,ax
+    mov bl, '*'
+    mov bh, 125
+    mov [es:di], bx
+    ret
+endp drow3
+proc RandLoop
+    mov ax, [Clock] 
+    mov bx,sodoRand
+    mov dx, [ cs:bx] 
+    xor dx, ax 
+    and dx, 2000 
+    inc sodoRand
+    mov pos , dx
+    call drow
+    RandLoop
 endp
-
-proc moveLeft
-
-	mov al, ' '
-	mov ah, 0
-	mov [es:di], ax
-	sub di, 2
-	
-	mov al, '*'
-	mov ah, 255
-	mov [es:di], ax
-
-	ret
-endp
-
-proc moveRight
-
-	mov al, ' '
-	mov ah, 0
-	mov [es:di], ax
-	add di, 2
-
-	mov al, '*'
-	mov ah, 255
-	mov [es:di], ax
-
-	ret
-endp
-
-proc upperLimit
-	
-	mov cx, 0
-	loop_upperLimit:
-		cmp di, cx
-		jz compareS
-
-		inc cx
-		cmp cx, 160
-		jnz loop_upperLimit
-	
-	ret
-endp
-
-proc lowerLimmit
-
-	mov cx, 160*24
-	loop_lowerLimit:
-		cmp di, cx
-		jz compareA
-		
-		inc cx
-		cmp cx, 160*25
-		jnz loop_lowerLimit
-
-	ret
-endp
-
-proc leftLimit
-
-	mov cx, 0
-	loop_leftLimit:
-		cmp di, cx
-		jz compareD
-
-		add cx, 160
-		cmp cx, 2*(24*80)
-		jnz loop_leftLimit
-
-	ret
-endp
-
-proc rightLimit
-	
-	mov cx, 160
-	loop_rightLimit:
-		cmp di, cx
-		jz infinityLoop
-
-		add cx, 160
-		cmp cx, 2*(25*80)
-		jnz loop_rightLimit
-	
-	ret
-endp
-
-proc delay
-
-	mov cx, 0
-	mov dx, 0
-	
-	counting2:
-		inc cx
-		cmp cx, 05h
-		jz counting
-		jnz counting2
-	
-	counting:
-		mov cx, 0
-		cmp dx, 50
-		jz start
-		inc dx
-		jnz counting2
-		
-
-	ret
-endp delay
-
 start:
-	mov ax, @data
-	mov ds, ax
-	mov ax, 0b800h
-	mov es, ax
-; --------------------------
-; Your code here
+    mov ax, @data
+    mov ds, ax
+    mov ax, 0b800h
+    mov es, ax
+    call blackScreen
 
-;call blackScreen
+inputLoop:
+    mov ah, 1
+    int 21h
+    cmp al, 'q' 
+    jz exit
+    cmp al, 'w' 
+    jz moveUp
+    cmp al, 's' 
+    jz moveDown
+    cmp al, 'a' 
+    jz moveLeft
+    cmp al, 'd' 
+    jz moveRight
+    jmp inputLoop ; Continue looping for input
 
-mov di, 0
-mov di, 2*(20*50)
-mov al, '*'
-mov ah, 255
-mov [es:di], ax
+moveUp:
+    cmp y1,0
+    jz inputLoop
+    call blackScreen
+	call drow3
+	call drow2
+    dec y1
+	call drow2
+    jmp inputLoop
 
-	
-infinityLoop:
+moveDown:
+    cmp y1,24
+    jz inputLoop
+    call blackScreen
+	call drow3
+	call drow2
+    inc y1
+	call drow2
+    jmp inputLoop
 
-	mov ah, 0
-	int 16h
+moveLeft:
+    cmp x1,0
+    jz inputLoop
+    call blackScreen
+	call drow3
+	call drow2
+    dec x1
+	call drow2
+    jmp inputLoop
 
-	compareW:
-		cmp al, 'w'
-		jnz compareS
-		call upperLimit
-		call moveUp
+moveRight:
+    cmp x1,79
+    jz inputLoop
+    call blackScreen
+	call drow3
+	call drow2
+    inc x1
+	call drow2
+    jmp inputLoop
 
-	compareS:
-		cmp al, 's'
-		jnz compareA
-		call lowerLimmit
-		call moveDown
-
-	compareA:
-		cmp al, 'a'
-		jnz compareD
-		call leftLimit
-		call moveLeft
-	
-	compareD:
-		cmp al, 'd'
-		jnz infinityLoop
-		call rightLimit
-		call moveRight
-	
-jmp infinityLoop
-
-; --------------------------
-	
 exit:
-	mov ax, 4c00h
-	int 21h
+    mov ax, 4c00h
+    int 21h
+
 END start
